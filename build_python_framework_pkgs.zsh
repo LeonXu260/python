@@ -304,13 +304,13 @@ SIGNED_JSONFILE
     echo "Could not sign package: ${PKG_RESULT}" 1>&2
     exit 1
   else
-    # if [ -n "$6" ]; then
-    #   # Notarize and staple the package
-    #   $XCODE_NOTARY_PATH store-credentials --apple-id "opensource@macadmins.io" --team-id "T4SK8ZXCXG" --password "$NOTARY_APP_PASSWORD" macadminpython
-    #   # If these fail, it will bail on the entire process
-    #   $XCODE_NOTARY_PATH submit "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" --keychain-profile "macadminpython" --wait
-    #   $XCODE_STAPLER_PATH staple "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg"
-    # fi
+    if [ -n "$6" ]; then
+      # Notarize and staple the package
+      $XCODE_NOTARY_PATH store-credentials --apple-id "opensource@macadmins.io" --team-id "T4SK8ZXCXG" --password "$NOTARY_APP_PASSWORD" macadminpython
+      # If these fail, it will bail on the entire process
+      $XCODE_NOTARY_PATH submit "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" --keychain-profile "macadminpython" --wait
+      $XCODE_STAPLER_PATH staple "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg"
+    fi
     # Move the signed + notarized pkg
     /bin/mv "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" "$OUTPUTSDIR"
   fi
