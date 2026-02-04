@@ -13,13 +13,13 @@ PYTHON_PRERELEASE_VERSION=
 PYTHON_BASEURL="https://www.python.org/ftp/python/%s/python-%s${PYTHON_PRERELEASE_VERSION}-macos%s.pkg"
 # Hardcoded paths
 FRAMEWORKDIR="/Library/ManagedFrameworks/Python"
-PYTHON_BIN="$FRAMEWORKDIR/Python3.framework/Versions/Current/bin/python3"
-PYTHON_BIN_NEW="$FRAMEWORKDIR/Python3.framework/Versions/Current/Resources/Python.app/Contents/MacOS/Python"
+PYTHON_BIN="$FRAMEWORKDIR/Python.framework/Versions/Current/bin/python3"
+PYTHON_BIN_NEW="$FRAMEWORKDIR/Python.framework/Versions/Current/Resources/Python.app/Contents/MacOS/Python"
 RP_BINDIR="/tmp/relocatable-python"
 MP_BINDIR="/tmp/munki-pkg"
 CONSOLEUSER=$(/usr/bin/stat -f "%Su" /dev/console)
 PIPCACHEDIR="/Users/${CONSOLEUSER}/Library/Caches/pip"
-XCODE_PATH="/Applications/Xcode_15.2.app"
+XCODE_PATH="/Applications/Xcode.app"
 XCODE_NOTARY_PATH="$XCODE_PATH/Contents/Developer/usr/bin/notarytool"
 XCODE_STAPLER_PATH="$XCODE_PATH/Contents/Developer/usr/bin/stapler"
 NEWSUBBUILD=$((80620 + $(/usr/bin/git rev-parse HEAD~0 | xargs -I{} /usr/bin/git rev-list --count {})))
@@ -56,13 +56,13 @@ fi
 if [ -n "$4" ]; then
   PYTHON_VERSION=$4
 else
-  PYTHON_VERSION=3.13.5
+  PYTHON_VERSION=3.14.3
 fi
 
 if [ -n "$5" ]; then
   PYTHON_MAJOR_VERSION=$5
 else
-  PYTHON_MAJOR_VERSION=3.13
+  PYTHON_MAJOR_VERSION=3.14
 fi
 # Set python bin version based on PYTHON_VERSION
 PYTHON_BIN_VERSION="${PYTHON_VERSION%.*}"
@@ -96,8 +96,16 @@ if [ -d "${PIPCACHEDIR}" ]; then
     /usr/bin/sudo /bin/rm -rf "${PIPCACHEDIR}"
 fi
 
-# kill homebrew packages on GitHub runner
-/usr/local/bin/brew remove --force $(/usr/local/bin/brew list)
+# kill homebrew packages on GitHub runner (commented out for safety)
+# /usr/local/bin/brew remove --force $(/usr/local/bin/brew list)
+
+# Safety check: Only remove Homebrew packages in CI environments
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
+    echo "CI environment detected - removing Homebrew packages"
+    /usr/local/bin/brew remove --force $(/usr/local/bin/brew list)
+else
+    echo "Local environment detected - skipping Homebrew package removal for safety"
+fi
 
 # Ensure Xcode is set to run-time
 sudo xcode-select -s "$XCODE_PATH"
@@ -176,7 +184,6 @@ C_INCLUDE_PATH="/Library/ManagedFrameworks/Python/Python.framework/Versions/Curr
 --python-version "${PYTHON_VERSION}" \
 --os-version "${MACOS_VERSION}" \
 --upgrade-pip \
---no-unsign \
 --pip-requirements "${TOOLSDIR}/requirements_${TYPE}.txt" \
 --destination "${FRAMEWORKDIR}"
 
@@ -297,13 +304,13 @@ SIGNED_JSONFILE
     echo "Could not sign package: ${PKG_RESULT}" 1>&2
     exit 1
   else
-    if [ -n "$6" ]; then
-      # Notarize and staple the package
-      $XCODE_NOTARY_PATH store-credentials --apple-id "opensource@macadmins.io" --team-id "T4SK8ZXCXG" --password "$NOTARY_APP_PASSWORD" macadminpython
-      # If these fail, it will bail on the entire process
-      $XCODE_NOTARY_PATH submit "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" --keychain-profile "macadminpython" --wait
-      $XCODE_STAPLER_PATH staple "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg"
-    fi
+    # if [ -n "$6" ]; then
+    #   # Notarize and staple the package
+    #   $XCODE_NOTARY_PATH store-credentials --apple-id "opensource@macadmins.io" --team-id "T4SK8ZXCXG" --password "$NOTARY_APP_PASSWORD" macadminpython
+    #   # If these fail, it will bail on the entire process
+    #   $XCODE_NOTARY_PATH submit "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" --keychain-profile "macadminpython" --wait
+    #   $XCODE_STAPLER_PATH staple "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg"
+    # fi
     # Move the signed + notarized pkg
     /bin/mv "$TOOLSDIR/$TYPE/build/python_${TYPE}_signed-$AUTOMATED_PYTHON_BUILD.pkg" "$OUTPUTSDIR"
   fi
